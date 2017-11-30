@@ -2,4 +2,5 @@
 /logs
 /npm-debug.log
 /node_modules
+src/secrets.json
 .DS_Store
