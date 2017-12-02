@@ -15,7 +15,8 @@ const tradeId = 0;
 const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
-const buyBuy = 50;
+const buyBuyPeriod = 50;
+let rsi21Time = null;
 
 let previous21RSI = 0;
 let previous50RSI = 0;
@@ -108,6 +109,27 @@ const setClosingPrices = () => {
     }, err => console.log(err));
 };
 
+const getTimeUnder50 = (rsi21Inidicator) => {
+    let rsi21TimeDiff = null;
+
+    if (!rsi21Time) {
+        if (rsi21Inidicator < 50) {
+            rsi21Time = moment();
+        }
+    } else {
+        const now = moment();
+        const duration = moment.duration(now.diff(rsi21Time));
+        rsi21TimeDiff = duration.asSeconds();
+
+         if (rsi21TimeDiff < candleSize * 60 && rsi21Inidicator > 50) {
+             rsi21TimeDiff = null;
+             rsi21Time = null;
+         }
+    }
+
+    return rsi21TimeDiff;
+}
+
 const calculateRsi = () => {
     if (!tradeOpen) {
         // open logic here
@@ -126,13 +148,17 @@ const calculateRsi = () => {
                 hasMidPrice = true
 
                 let shouldBuy = false;
-                const rsi21Inidicator = getRsi(closingPrices, buyPeriod)[0]
-                const rsi50Inidicator = getRsi(closingPrices, buyBuy)[0]
+                const rsi21Inidicator = getRsi(closingPrices, buyPeriod)[0];
+                const rsi50Inidicator = getRsi(closingPrices, buyBuyPeriod)[0];
                 const ATRValue = ATR.calculate(atrData)[0];
+                const rsi21TimeDiff = getTimeUnder50(rsi21Inidicator);
 
-                if (previous21RSI && previous50RSI) {
-                    if (rsi21Inidicator > buyBuy && previous21RSI < buyBuy) {
+                console.log('RSI21 seconds under 50:', rsi21TimeDiff);
+
+                if (previous21RSI && previous50RSI && rsi21TimeDiff && rsi21TimeDiff > candleSize * 60) {
+                    if (rsi21Inidicator > buyBuyPeriod && previous21RSI < buyBuyPeriod) {
                         if (rsi50Inidicator > previous50RSI) {
+                            rsi21Time = null;
                             shouldBuy = true;
                             openTrade();
                         }
@@ -142,7 +168,7 @@ const calculateRsi = () => {
                 previous21RSI = rsi21Inidicator;
                 previous50RSI = rsi50Inidicator;
 
-                console.log('RSI21:', rsi21Inidicator, 'RSI50:', rsi50Inidicator, 'Should Buy:', shouldBuy, 'tradeOpen:', tradeOpen, 'ATR:', ATRValue);
+                console.log('RSI21:', rsi21Inidicator, 'RSI50:', rsi50Inidicator, 'Should Buy:', shouldBuy, 'Trade Open:', tradeOpen, 'ATR:', ATRValue);
                 console.log('==========================================================')
 
 
