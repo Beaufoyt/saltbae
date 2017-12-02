@@ -54,7 +54,7 @@ function getRsi(array, rsiPeriod) {
 }
 
 const setClosingPrices = () => {
-    const startTime = moment().subtract(50 + 30, 'minutes').toISOString();
+    const startTime = moment().subtract(50 * 30, 'minutes').toISOString();
     const endTime = moment().toISOString();
     const url = `https://api.gdax.com/products/BTC-USD/candles?start=${startTime}end=${endTime}&granularity=1800`;
     console.log(`=== Saving closing prices === ${url}`);
