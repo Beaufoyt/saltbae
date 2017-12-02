@@ -11,6 +11,7 @@ let closingPrices = [];
 let atrData = {};
 let hasMidPrice = false;
 let tradeOpen = false;
+const tradeId = 0;
 const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
@@ -67,14 +68,12 @@ function getRsi(array, rsiPeriod) {
 const openTrade = () => {
     tradeOpen = true;
 
-    if (!tradeOpen) {
-        // open logic here
-    }
+    // set trade and save tradeId
 }
 
-const closeTrade = () => {
-    tradeOpen = false;
-    // close logic here
+const getCurrentTradeDetails = (tradeId) => {
+    // get trade from bitmex
+    console.log('Trade details... profit etc', tradeId);
 }
 
 const setClosingPrices = () => {
@@ -110,42 +109,47 @@ const setClosingPrices = () => {
 };
 
 const calculateRsi = () => {
-    if (closingPrices.length) {
-        axios.get('https://api.gdax.com/products/BTC-USD/book?level=1').then(response => {
-            const bidPrice = response.data.bids[0][0];
-            const askPrice = response.data.asks[0][0];
-            const median = (parseInt(bidPrice) + parseInt(askPrice)) / 2
-            console.log(`Mid price: ${median}`);
+    if (!tradeOpen) {
+        // open logic here
+        if (closingPrices.length) {
+            axios.get('https://api.gdax.com/products/BTC-USD/book?level=1').then(response => {
+                const bidPrice = response.data.bids[0][0];
+                const askPrice = response.data.asks[0][0];
+                const median = (parseInt(bidPrice) + parseInt(askPrice)) / 2
+                console.log(`Mid price: ${median}`);
 
-            if (!hasMidPrice) {
-                closingPrices.unshift(median);
-            } else {
-                closingPrices[0] = median;
-            }
-            hasMidPrice = true
+                if (!hasMidPrice) {
+                    closingPrices.unshift(median);
+                } else {
+                    closingPrices[0] = median;
+                }
+                hasMidPrice = true
 
-            let shouldBuy = false;
-            const rsi21Inidicator = getRsi(closingPrices, buyPeriod)[0]
-            const rsi50Inidicator = getRsi(closingPrices, buyBuy)[0]
-            const ATRValue = ATR.calculate(atrData)[0];
+                let shouldBuy = false;
+                const rsi21Inidicator = getRsi(closingPrices, buyPeriod)[0]
+                const rsi50Inidicator = getRsi(closingPrices, buyBuy)[0]
+                const ATRValue = ATR.calculate(atrData)[0];
 
-            if (previous21RSI && previous50RSI) {
-                if (rsi21Inidicator > buyBuy && previous21RSI < buyBuy) {
-                    if (rsi50Inidicator > previous50RSI) {
-                        shouldBuy = true;
-                        openTrade();
+                if (previous21RSI && previous50RSI) {
+                    if (rsi21Inidicator > buyBuy && previous21RSI < buyBuy) {
+                        if (rsi50Inidicator > previous50RSI) {
+                            shouldBuy = true;
+                            openTrade();
+                        }
                     }
                 }
-            }
 
-            previous21RSI = rsi21Inidicator;
-            previous50RSI = rsi50Inidicator;
+                previous21RSI = rsi21Inidicator;
+                previous50RSI = rsi50Inidicator;
 
-            console.log('RSI21:', rsi21Inidicator, 'RSI50:', rsi50Inidicator, 'Should Buy:', shouldBuy, 'tradeOpen:', tradeOpen, 'ATR:', ATRValue);
-            console.log('==========================================================')
+                console.log('RSI21:', rsi21Inidicator, 'RSI50:', rsi50Inidicator, 'Should Buy:', shouldBuy, 'tradeOpen:', tradeOpen, 'ATR:', ATRValue);
+                console.log('==========================================================')
 
 
-        }, err => console.log(err));
+            }, err => console.log(err));
+        }
+    } else {
+        getCurrentTradeDetails(tradeId);
     }
 };
 
