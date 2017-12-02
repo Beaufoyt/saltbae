@@ -1,20 +1,23 @@
 import { version } from '../../package.json';
+import { ATR } from 'technicalindicators';
 import { Router } from 'express';
-import facets from './facets';
-import BitMEXClient from '../clients/bitmex';
-// import { Client } from 'coinbase';
-// import secrets from '../secrets.json';
 import axios from 'axios';
 import moment from 'moment';
-import { ATR } from 'technicalindicators';
 
-const bitmexClient = new BitMEXClient({testnet: false});
+import facets from './facets';
+import { makeRequest as bitmexHttpRequest } from '../clients/bitmexHttp';
+// import { Client } from 'coinbase';
+// import secrets from '../secrets.json';
 
 let closingPrices = [];
 let atrData = {};
 let hasMidPrice = false;
 let tradeOpen = false;
-const tradeId = 0;
+let orderId = 0;
+let buyPrice = 0;
+let sellProfitPrice = 0;
+let sellLossPrice = 0;
+let ATRValue = 0;
 const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
@@ -25,15 +28,25 @@ let previous21RSI = 0;
 let previous50RSI = 0;
 // var client = new Client({'apiKey': secrets.apiKey, 'apiSecret': secrets.apiSecret});
 
-bitmexClient.on('error', console.error);
-bitmexClient.on('open', () => console.log('Connection opened.'));
-bitmexClient.on('close', () => console.log('Connection closed.'));
-bitmexClient.on('initialize', () => console.log('Client initialized, data is flowing.'));
+// bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 10 }, (response) => {//
+//     console.log(response);
+// });
 
-bitmexClient.addStream('XBTUSD', 'instrument', function(data, symbol, tableName) {
-  console.log(`Got update for ${tableName}:${symbol}. Current state:\n${JSON.stringify(data).slice(0, 100)}...`);
-  // Do something with the table data...
-});
+// bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 100, ordType: 'Market' }, (response) => {
+//     console.log(response);
+// });
+
+// bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close' }, (response) => {
+//     console.log(response);
+// });
+
+// bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 100, ordType: 'Market' }, (response) => {
+//     console.log(response);
+// });
+
+// bitmexHttpRequest('get', '/order', null, (response) => {
+//     console.log(response.data[response.data.length - 1]);
+// });
 
 function getRsi(array, rsiPeriod) {
     const rsi = [];
@@ -80,47 +93,76 @@ function getRsi(array, rsiPeriod) {
     return rsi;
 }
 
-const openTrade = () => {
-    tradeOpen = true;
-
-    // set trade and save tradeId
+const closePosition = () => {
+    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close' }, (response) => {
+        console.log('Position closed:', 'Price:', response.data.price);
+        tradeOpen = false;
+    });
 }
 
-const getCurrentTradeDetails = (tradeId) => {
+const openOrder = () => {
+    tradeOpen = true;
+
+    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 100, ordType: 'Market' }, (response) => {
+        orderId = response.data.orderID;
+        buyPrice = response.data.price;
+        sellProfitPrice = buyPrice + (ATRValue * 2);
+        sellLossPrice = buyPrice - ATRValue;
+
+        console.log('Order opened! ID:', orderId, 'price:', buyPrice);
+    });
+}
+
+const getCurrentPositionDetails = () => {
     // get trade from bitmex
-    console.log('Trade details... profit etc', tradeId);
+    bitmexHttpRequest('get', '/position', null, (response) => {
+        if (response.data.length) {
+            const position = response.data[response.data.length - 1];
+
+            console.log('Position details:', 'Leverage:', position.leverage, 'Buy price:', position.avgCostPrice, 'Last price:', position.lastPrice, `ROE: % ${position.unrealisedRoePcnt * 100}`);
+            if (sellProfitPrice && sellLossPrice) {
+                if (position.lastPrice > sellProfitPrice || position.lastPrice < sellLossPrice) {
+                    closePosition();
+                }
+            }
+        } else {
+            console.log('Order not yet fullfilled');
+        }
+    });
 }
 
 const setClosingPrices = () => {
-    const startTime = moment().subtract(110 * candleSize, 'minutes').toISOString();
-    const endTime = moment().toISOString();
-    const url = `https://api.gdax.com/products/BTC-USD/candles?start=${startTime}end=${endTime}&granularity=${candleSize * 60}`;
-    console.log(`=== Saving closing prices === ${url}`);
+    if (!tradeOpen) {
+        const startTime = moment().subtract(110 * candleSize, 'minutes').toISOString();
+        const endTime = moment().toISOString();
+        const url = `https://api.gdax.com/products/BTC-USD/candles?start=${startTime}end=${endTime}&granularity=${candleSize * 60}`;
+        console.log(`=== Saving closing prices === ${url}`);
 
-    axios.get(url).then(response => {
-        // For some reason i need to slice the most current 110 as through axios i seem to get the last 400 candles no matter what times i put in.
-        // if you log the url and hit it through the browser you get the correct amount back (110) :thinking:
-        response.data = response.data.length > 110 ? response.data.slice(0, 110) : response.data;
-        closingPrices = [];
-        atrData = {
-            high: [],
-            low: [],
-            close: [],
-            period: atrPeriod,
-        };
-        hasMidPrice = false;
+        axios.get(url).then(response => {
+            // For some reason i need to slice the most current 110 as through axios i seem to get the last 400 candles no matter what times i put in.
+            // if you log the url and hit it through the browser you get the correct amount back (110) :thinking:
+            response.data = response.data.length > 110 ? response.data.slice(0, 110) : response.data;
+            closingPrices = [];
+            atrData = {
+                high: [],
+                low: [],
+                close: [],
+                period: atrPeriod,
+            };
+            hasMidPrice = false;
 
-        for(var candle in response.data) {
-            const close = response.data[candle][4];
+            for(var candle in response.data) {
+                const close = response.data[candle][4];
 
-            atrData.low.push(response.data[candle][1]);
-            atrData.high.push(response.data[candle][2]);
-            atrData.close.push(close);
-            closingPrices.push(close);
-        }
+                atrData.low.push(response.data[candle][1]);
+                atrData.high.push(response.data[candle][2]);
+                atrData.close.push(close);
+                closingPrices.push(close);
+            }
 
 
-    }, err => console.log(err));
+        }, err => console.log(err));
+    }
 };
 
 const getTimeUnder50 = (rsi21Inidicator) => {
@@ -164,17 +206,17 @@ const calculateRsi = () => {
                 let shouldBuy = false;
                 const rsi21Inidicator = getRsi(closingPrices, buyPeriod)[0];
                 const rsi50Inidicator = getRsi(closingPrices, buyBuyPeriod)[0];
-                const ATRValue = ATR.calculate(atrData)[0];
+                ATRValue = ATR.calculate(atrData)[0];
                 const rsi21TimeDiff = getTimeUnder50(rsi21Inidicator);
 
                 console.log('RSI21 seconds under 50:', rsi21TimeDiff);
 
-                if (previous21RSI && previous50RSI && rsi21TimeDiff && rsi21TimeDiff > candleSize * 60) {
+                if (ATRValue && previous21RSI && previous50RSI && rsi21TimeDiff && rsi21TimeDiff > candleSize * 60) {
                     if (rsi21Inidicator > buyBuyPeriod && previous21RSI < buyBuyPeriod) {
                         if (rsi50Inidicator > previous50RSI) {
                             rsi21Time = null;
                             shouldBuy = true;
-                            openTrade();
+                            openOrder();
                         }
                     }
                 }
@@ -189,7 +231,9 @@ const calculateRsi = () => {
             }, err => console.log(err));
         }
     } else {
-        getCurrentTradeDetails(tradeId);
+        if (orderId) {
+            getCurrentPositionDetails();
+        }
     }
 };
 
@@ -197,8 +241,6 @@ setClosingPrices();
 setInterval(setClosingPrices, 10 * 1000);
 calculateRsi();
 setInterval(calculateRsi, 2 * 1000);
-
-
 
 
 
