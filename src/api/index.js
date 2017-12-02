@@ -1,11 +1,14 @@
 import { version } from '../../package.json';
 import { Router } from 'express';
 import facets from './facets';
+import BitMEXClient from '../clients/bitmex';
 // import { Client } from 'coinbase';
 // import secrets from '../secrets.json';
 import axios from 'axios';
 import moment from 'moment';
 import { ATR } from 'technicalindicators';
+
+const bitmexClient = new BitMEXClient({testnet: false});
 
 let closingPrices = [];
 let atrData = {};
@@ -21,6 +24,17 @@ let rsi21Time = null;
 let previous21RSI = 0;
 let previous50RSI = 0;
 // var client = new Client({'apiKey': secrets.apiKey, 'apiSecret': secrets.apiSecret});
+
+bitmexClient.on('error', console.error);
+bitmexClient.on('open', () => console.log('Connection opened.'));
+bitmexClient.on('close', () => console.log('Connection closed.'));
+bitmexClient.on('initialize', () => console.log('Client initialized, data is flowing.'));
+
+bitmexClient.addStream('XBTUSD', 'instrument', function(data, symbol, tableName) {
+  console.log(`Got update for ${tableName}:${symbol}. Current state:\n${JSON.stringify(data).slice(0, 100)}...`);
+  // Do something with the table data...
+});
+
 function getRsi(array, rsiPeriod) {
     const rsi = [];
     let first = true;
