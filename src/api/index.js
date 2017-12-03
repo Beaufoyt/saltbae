@@ -28,13 +28,11 @@ const buyPeriod = 21;
 const buyBuyPeriod = 50;
 const bidSize = 10;
 
-let rsi21Time = null;
+let direction = "";
 
-let previous21RSI = 0;
-let previous50RSI = 0;
 // var client = new Client({'apiKey': secrets.apiKey, 'apiSecret': secrets.apiSecret});
 
-bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBT', leverage: 10 }, (response) => {//
+bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 1 }, (response) => {//
    console.log(response);
  });
 
@@ -63,7 +61,9 @@ const closePosition = () => {
     });
 }
 
-const openOrder = (direction) => {
+const openOrder = (tradeDirection) => {
+    direction = tradeDirection;
+    
     if (!tradeOpen) {
 
         bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 10, ordType: 'Market'}, (response) => {
@@ -103,14 +103,15 @@ const tradeLogic = () => {
         buyRatio = Math.round((buyTotal/sellTotal) * 100);
 
         if (buyRatio > 500){
-            openOrder('Buy');
+            openOrder('Buy');          
         }
+
         if (buyRatio < 20){
             openOrder('Sell');
         }
 
         if (tradeOpen) {
-            var dollarMovement = median - buyPrice;
+            var dollarMovement =  direction == 'Buy' ? median - buyPrice :  buyPrice - median;
             console.log('Making:', dollarMovement , ' dollars');
             console.log('==========================================================')
             if (dollarMovement > 8 || dollarMovement < -8) {
