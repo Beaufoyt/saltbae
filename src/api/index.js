@@ -17,7 +17,7 @@ let orderId = 0;
 let buyPrice = 0;
 let sellProfitPrice = 0;
 let sellLossPrice = 0;
-let ATRValue = 0;
+let ATRValue = 15;
 const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
@@ -36,7 +36,7 @@ let previous50RSI = 0;
 //     console.log(response);
 // });
 
-// bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close' }, (response) => {
+// bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', ordType: 'Market' }, (response) => {
 //     console.log(response);
 // });
 
@@ -44,8 +44,8 @@ let previous50RSI = 0;
 //     console.log(response);
 // });
 
-// bitmexHttpRequest('get', '/order', null, (response) => {
-//     console.log(response.data[response.data.length - 1]);
+// bitmexHttpRequest('get', '/position', null, (response) => {
+//     console.log(response);
 // });
 
 function getRsi(array, rsiPeriod) {
@@ -94,8 +94,9 @@ function getRsi(array, rsiPeriod) {
 }
 
 const closePosition = () => {
-    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close' }, (response) => {
+    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', ordType: 'Market' }, (response) => {
         console.log('Position closed:', 'Price:', response.data.price);
+        orderId = null;
         tradeOpen = false;
     });
 }
@@ -106,8 +107,8 @@ const openOrder = () => {
     bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 9000, ordType: 'Market' }, (response) => {
         orderId = response.data.orderID;
         buyPrice = response.data.price;
-        sellProfitPrice = buyPrice + (ATRValue * 2);
-        sellLossPrice = buyPrice - ATRValue;
+        sellProfitPrice = buyPrice + (ATRValue * 3);
+        sellLossPrice = buyPrice - (ATRValue * 1.5);
 
         console.log('Order opened! ID:', orderId, 'price:', buyPrice);
     });
@@ -119,11 +120,16 @@ const getCurrentPositionDetails = () => {
         if (response.data.length) {
             const position = response.data[response.data.length - 1];
 
-            console.log('Position details:', 'Leverage:', position.leverage, 'Buy price:', position.avgCostPrice, 'Last price:', position.lastPrice, `ROE: % ${position.unrealisedRoePcnt * 100}`);
-            if (sellProfitPrice && sellLossPrice) {
-                if (position.lastPrice > sellProfitPrice || position.lastPrice < sellLossPrice) {
-                    closePosition();
+            if (position.lastPrice) {
+                console.log('Position details:', 'Leverage:', position.leverage, 'Buy price:', position.avgCostPrice, 'Last price:', position.lastPrice, `ROE: % ${position.unrealisedRoePcnt * 100}`);
+                if (sellProfitPrice && sellLossPrice) {
+                    if (position.lastPrice > sellProfitPrice || position.lastPrice < sellLossPrice) {
+                        closePosition();
+                    }
                 }
+            } else {
+                console.log('Position not found. It may have been liquidated.');
+                tradeOpen = false;
             }
         } else {
             console.log('Order not yet fullfilled');
@@ -241,8 +247,6 @@ setClosingPrices();
 setInterval(setClosingPrices, 10 * 1000);
 calculateRsi();
 setInterval(calculateRsi, 2 * 1000);
-
-
 
 
 
