@@ -28,7 +28,7 @@ let previous21RSI = 0;
 let previous50RSI = 0;
 // var client = new Client({'apiKey': secrets.apiKey, 'apiSecret': secrets.apiSecret});
 
-// bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 10 }, (response) => {//
+// bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 100 }, (response) => {//
 //     console.log(response);
 // });
 
@@ -103,7 +103,7 @@ const closePosition = () => {
 const openOrder = () => {
     tradeOpen = true;
 
-    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 100, ordType: 'Market' }, (response) => {
+    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 9000, ordType: 'Market' }, (response) => {
         orderId = response.data.orderID;
         buyPrice = response.data.price;
         sellProfitPrice = buyPrice + (ATRValue * 2);
@@ -212,7 +212,7 @@ const calculateRsi = () => {
                 console.log('RSI21 seconds under 50:', rsi21TimeDiff);
 
                 if (ATRValue && previous21RSI && previous50RSI && rsi21TimeDiff && rsi21TimeDiff > candleSize * 60) {
-                    if (rsi21Inidicator > buyBuyPeriod && previous21RSI < buyBuyPeriod) {
+                    if (rsi21Inidicator > buyBuyPeriod && previous21RSI > buyBuyPeriod) {
                         if (rsi50Inidicator > previous50RSI) {
                             rsi21Time = null;
                             shouldBuy = true;
@@ -241,6 +241,7 @@ setClosingPrices();
 setInterval(setClosingPrices, 10 * 1000);
 calculateRsi();
 setInterval(calculateRsi, 2 * 1000);
+
 
 
 
