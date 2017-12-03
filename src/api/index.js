@@ -26,7 +26,7 @@ const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
 const buyBuyPeriod = 50;
-const bidSize = 10;
+const bidSize = 100;
 
 let direction = "";
 
@@ -63,7 +63,7 @@ const closePosition = () => {
 
 const openOrder = (tradeDirection) => {
     direction = tradeDirection;
-    
+
     if (!tradeOpen) {
 
         bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 10, ordType: 'Market'}, (response) => {
