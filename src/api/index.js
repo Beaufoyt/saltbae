@@ -34,7 +34,7 @@ let previous21RSI = 0;
 let previous50RSI = 0;
 // var client = new Client({'apiKey': secrets.apiKey, 'apiSecret': secrets.apiSecret});
 
-bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 5 }, (response) => {//
+bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBT', leverage: 10 }, (response) => {//
    console.log(response);
  });
 
@@ -108,13 +108,12 @@ const tradeLogic = () => {
         if (buyRatio < 20){
             openOrder('Sell');
         }
-getCurrentPositionDetails;
 
         if (tradeOpen) {
             var dollarMovement = median - buyPrice;
             console.log('Making:', dollarMovement , ' dollars');
             console.log('==========================================================')
-            if (dollarMovement > 8) {
+            if (dollarMovement > 8 || dollarMovement < -8) {
                  closePosition();
             }
         } else {
@@ -126,31 +125,6 @@ getCurrentPositionDetails;
 };
 
 setInterval(tradeLogic, 2 * 1000);
-
-
-const getCurrentPositionDetails = () => {
-    // get trade from bitmex
-    bitmexHttpRequest('get', '/position', null, (response) => {
-        if (response.data.length) {
-            const position = response.data[response.data.length - 1];
-
-            if (position.lastPrice) {
-                console.log('Position details:', 'Leverage:', position.leverage, 'Buy price:', position.avgCostPrice, 'Last price:', position.lastPrice, `ROE: % ${position.unrealisedRoePcnt * 100}`);
-                if (sellProfitPrice && sellLossPrice) {
-                    if (position.lastPrice > sellProfitPrice || position.lastPrice < sellLossPrice) {
-                        closePosition();
-                    }
-                }
-            } else {
-                console.log('Position not found. It may have been liquidated.');
-                tradeOpen = false;
-            }
-        } else {
-            console.log('Order not yet fullfilled');
-        }
-    });
-}
-
 
 
 // API stuff for when we need it.
