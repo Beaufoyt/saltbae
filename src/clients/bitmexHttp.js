@@ -3,6 +3,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 const bitmexAxios = axios.create();
+const isLive = true;
 
 // Pre-compute the postBody so we can be sure that we're using *exactly* the same body in the request
 // and in the signature. If you don't do this, you might get differently-sorted keys and blow the signature.
@@ -13,7 +14,7 @@ export function makeRequest(method, path, payload, cb) {
 
     const expires = new Date().getTime() + (60 * 1000);
     const signatureDetails = method.toUpperCase() + path + expires + (payload ? payload : '');
-    var signature = crypto.createHmac('sha256', bitmexSecret).update(signatureDetails).digest('hex');
+    var signature = crypto.createHmac('sha256', 'pYwdCDQocNLnB-awhDC_QZ3Xb7-azWKlqQjDir_INAqNRYC7').update(signatureDetails).digest('hex');
 
     bitmexAxios.defaults.headers = {
       'content-type' : 'application/json',
@@ -22,11 +23,16 @@ export function makeRequest(method, path, payload, cb) {
       // This example uses the 'expires' scheme. You can also use the 'nonce' scheme. See
       // https://www.bitmex.com/app/apiKeysUsage for more details.
       'api-nonce': expires,
-      'api-key': bitmexKey,
+      'api-key': 'StvcfG7wAq-5GL6ol4N8n2pF',
       'api-signature': signature
     };
 
-    request(method, payload, `https://testnet.bitmex.com${path}`, cb);
+    if (isLive) {
+      request(method, payload, `https://bitmex.com${path}`, cb);
+    }
+    else{
+      request(method, payload, `https://testnet.bitmex.com${path}`, cb);
+    }
 }
 
 function request(method, payload, url, cb) {
@@ -41,7 +47,7 @@ function request(method, payload, url, cb) {
         case 'post': {
             bitmexAxios.post(url, payload).then(response => {
                 return cb(response);
-            }, err => console.log(err))
+            }, err => console.log(err.response))
         }
     }
 }
