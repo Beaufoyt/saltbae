@@ -3,11 +3,11 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 const bitmexAxios = axios.create();
-const isLive = true;
+const isLive = false;
 // Pre-compute the postBody so we can be sure that we're using *exactly* the same body in the request
 // and in the signature. If you don't do this, you might get differently-sorted keys and blow the signature.
 
-export function makeRequest(method, path, payload, cb) {
+const authenticatedRequest = (method, path, payload, cb) => {
     payload = payload ? JSON.stringify(payload) : null;
     path = `/api/v1${path}`;
 
@@ -26,26 +26,60 @@ export function makeRequest(method, path, payload, cb) {
       'api-signature': signature
     };
 
-    if (isLive) {
-        request(method, payload, `https://www.bitmex.com${path}`, cb);
-    } else {
-        request(method, payload, `https://testnet.bitmex.com${path}`, cb);
-    }
+    request(method, path, payload, cb);
 }
 
-function request(method, payload, url, cb) {
-    switch(method) {
-        case 'get': {
-            bitmexAxios.get(url).then(response => {
-                return cb(response);
-            }, err => console.log(err))
-            break;
-        }
+const request = (method, path, payload, cb) => {
+    bitmexAxios[method](`https://${isLive ? 'www' : 'testnet'}.bitmex.com${path}`, payload).then((response) => {
+        return cb(response);
+    }, (err) => console.log(`Saltbae Error: Method: ${method.toUpperCase()} path: ${path}`, err))
+};
 
-        case 'post': {
-            bitmexAxios.post(url, payload).then(response => {
-                return cb(response);
-            }, err => console.log(err))
-        }
+export const closePositionLimit = (closePrice) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', price:  closePrice}, (response) => {
+        console.log('Position close set at:', response.data.price);
+    });
+};
+
+export const closePosition = () => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close'}, (response) => {
+        console.log('Position closed at:', response.data.price);
+    });
+}
+
+export const setLeverage = (amount) => {
+    authenticatedRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: amount }, () => {//
+       console.log(`>>>> Leverage set at ${amount} <<<<`);
+   });
+};
+
+export const openOrder = (bidSize, direction, cb) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: bidSize, ordType: 'Market', side: direction}, (response) => {
+        cb(response);
+    });
+}
+
+export const getPosition = (cb) => {
+    authenticatedRequest('get', '/position', null, (response) => {
+        cb(response);
+    });
+}
+
+export const getOrderBook = (orderDepth, cb) => {
+    delete bitmexAxios.defaults.headers['api-key'];
+    delete bitmexAxios.defaults.headers['api-signature'];
+    delete bitmexAxios.defaults.headers['api-nonce'];
+    request('get', `/api/v1/orderBook/L2?symbol=XBT&depth=${orderDepth}`, null, cb);
+};
+
+export const getOrderBookValues = (orderBook, orderDepth) => {
+    const askPrice = orderBook[orderDepth-1].price;
+    const bidPrice = orderBook[orderDepth].price;
+    const median = (bidPrice + askPrice) / 2;
+
+    return {
+        askPrice,
+        bidPrice,
+        median
     }
 }
