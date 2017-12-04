@@ -26,13 +26,17 @@ const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
 const buyBuyPeriod = 50;
-const bidSize = 100;
+const bidSize = 1000;
+const orderDepth = 35;
+let median = 0;
 
 let direction = "";
+let trend = "";
+
 
 // var client = new Client({'apiKey': secrets.apiKey, 'apiSecret': secrets.apiSecret});
 
-bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 1 }, (response) => {//
+bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 100 }, (response) => {//
    console.log(response);
  });
 
@@ -52,25 +56,42 @@ bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 1 
 //     console.log(response);
 // });
 
+const setClosePosition = () => {
+    var closePrice = direction == 'Buy' ? buyPrice + 20 : buyPrice - 20;
+    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', price:  closePrice}, (response) => {
+        console.log('Position close set at :', response.data.price);
+    });
+}
 
 const closePosition = () => {
+<<<<<<< b1e09498037b6cc9740ff7055a7db68131c6eeb1
     bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', ordType: 'Market' }, (response) => {
         console.log('Position closed:', 'Price:', response.data.price);
         orderId = null;
         tradeOpen = false;
+=======
+    var closePrice = direction == 'Buy' ? buyPrice + 20 : buyPrice - 20;
+    bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close'}, (response) => {
+        console.log('Position closed  at :', response.data.price);
+>>>>>>> fixes and tweaks
     });
 }
 
 const openOrder = (tradeDirection) => {
     direction = tradeDirection;
-
     if (!tradeOpen) {
+<<<<<<< b1e09498037b6cc9740ff7055a7db68131c6eeb1
 
         bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: 10, ordType: 'Market'}, (response) => {
+=======
+        console.log(direction);
+        bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', orderQty: bidSize, ordType: 'Market', side: direction}, (response) => {
+>>>>>>> fixes and tweaks
 
             orderId = response.data.orderID;
             buyPrice = response.data.price;
             tradeOpen = true;
+            setClosePosition();
             console.log('Order opened! ID:', orderId, 'price:', buyPrice);
         });
     }
@@ -78,18 +99,18 @@ const openOrder = (tradeDirection) => {
 
 
 const tradeLogic = () => {
-        // open logic here
-    var orderDepth = 10;
-
+       
+    // get order book data
     axios.get('https://www.bitmex.com/api/v1/orderBook/L2?symbol=XBT&depth=' + orderDepth).then(response => {
 
         var orderBookArray = response.data;
-        const askPrice = orderBookArray[(orderDepth/2) -1].price;
-        const bidPrice =  orderBookArray[orderDepth-1].price;
-        const median = (bidPrice + askPrice) / 2
-
+        const askPrice = orderBookArray[orderDepth-1].price;
+        const bidPrice =  orderBookArray[orderDepth].price;
+        median = (bidPrice + askPrice) / 2
+        console.log('Bid '+ bidPrice + ' Ask ' + askPrice);
         var buyTotal = 0;
         var sellTotal = 0;
+<<<<<<< b1e09498037b6cc9740ff7055a7db68131c6eeb1
 
         for (var i = 0; i < orderBookArray.length; i++) {
             if (orderBookArray[i].side == "Buy"){
@@ -123,9 +144,51 @@ const tradeLogic = () => {
         }
     }, err => console.log(err));
 
+=======
+        // see if any positions open
+        bitmexHttpRequest('get', '/position',null, (positionResponse) => {
+            // if no postiions open
+            if (positionResponse != null &&  positionResponse.data != null && positionResponse.data[0].currentQty == 0 ){
+                tradeOpen = false;
+                 for (var i = 0; i < orderBookArray.length; i++) {
+                    if (orderBookArray[i].side == "Buy"){
+                        buyTotal = buyTotal + orderBookArray[i].size;
+                    }
+                    if (orderBookArray[i].side == "Sell"){
+                        sellTotal = sellTotal + orderBookArray[i].size;
+                    } 
+                }   
+                buyRatio = Math.round((buyTotal/sellTotal) * 100);
+                if (buyRatio > 500 ){ //&& trend == "UP"
+                    openOrder('Buy');          
+                }
+                if (buyRatio < 20 && trend == "DOWN"){
+                    openOrder('Sell');
+                }
+                console.log('Current Price:', median,  ' Buy percentage:', buyRatio );
+                console.log('==========================================================')
+            } else {
+                tradeOpen = true;
+                if (positionResponse.data[0].currentQty > 0) {
+                    direction = 'Buy';
+                }
+                if (positionResponse.data[0].currentQty < 0) {
+                    direction = 'Sell';
+                }
+                var dollarMovement =  direction == 'Buy' ? median - buyPrice :  buyPrice - median;
+                console.log(direction , ' trade open at : ', buyPrice, ' Current Price:', median, 'Making:', dollarMovement );
+                console.log('==========================================================')
+                if (dollarMovement < -20 || dollarMovement  > 20) {
+                    closePosition();
+                }   
+            }   
+        });
+    }, err => console.log(err));
+>>>>>>> fixes and tweaks
 };
 
-setInterval(tradeLogic, 2 * 1000);
+
+setInterval( tradeLogic, 2 * 1000);
 
 
 // API stuff for when we need it.
