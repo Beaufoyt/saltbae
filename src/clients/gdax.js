@@ -6,16 +6,16 @@ let closingPrices = [];
 let candles = [];
 let midPrice = null;
 
-const _resetAtrData = (atrPeriod) => {
+const _resetAtrData = () => {
     return {
         high: [],
         low: [],
         close: [],
-        period: atrPeriod,
+        period: 0,
     };
 }
 
-let atrData = _resetAtrData(50);
+let atrData = _resetAtrData();
 
 const request = (method, path, payload, cb) => {
     axios[method](`https://api.gdax.com/${path}`, payload).then((response) => {
@@ -33,7 +33,7 @@ const requestOrderBook = (cb) => {
    });
 }
 
-const requestCandles = (candleSize, amount, atrPeriod, cb) => {
+const requestCandles = (candleSize, amount, cb) => {
     amount = amount < 1 ? 1 : amount;
     const startTime = moment().subtract(110 * candleSize, 'minutes').toISOString();
     const endTime = moment().toISOString();
@@ -42,7 +42,7 @@ const requestCandles = (candleSize, amount, atrPeriod, cb) => {
         response.data = response.data.length > 110 ? response.data.slice(0, 110) : response.data;
         candles = response.data;
         closingPrices = [];
-        atrData = _resetAtrData(atrPeriod);
+        atrData = _resetAtrData();
 
         for(var candle in response.data) {
             const close = response.data[candle][4];
@@ -59,7 +59,8 @@ export const getMidPrice = () => {
     return midPrice;
 }
 
-export const getAtrRange = () => {
+export const getAtrRange = (atrPeriod) => {
+    atrData.period = atrPeriod;
     return (atrData.high && atrData.high.length) ? getAtr(atrData) : [];
 }
 
@@ -77,9 +78,9 @@ export const getRsiRange = (period) => {
     return (midPrice && closingPrices && closingPrices.length > 1) ? getRsi(closingPrices, period) : [];
 }
 
-export const startDataLoop = (candleSize, numCandles, atrPeriod, intervalSeconds) => {
-    requestCandles(candleSize, numCandles, atrPeriod, null);
-    setInterval(() => requestCandles(candleSize, numCandles, atrPeriod, null), intervalSeconds * 1000);
+export const startDataLoop = (candleSize, numCandles, intervalSeconds) => {
+    requestCandles(candleSize, numCandles, null);
+    setInterval(() => requestCandles(candleSize, numCandles, null), intervalSeconds * 1000);
     requestOrderBook();
     setInterval(requestOrderBook, intervalSeconds * 1000);
 }

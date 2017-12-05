@@ -54,7 +54,7 @@ const openOrder = (tradeDirection) => {
 
 const tradeLogic = () => {
     const rsi21Indicator = getRsiRange(21)[0];
-    const atrIndicator = getAtrRange()[0];
+    const atrIndicator = getAtrRange(21)[0];
 
     if (rsi21Indicator && atrIndicator) {
         console.log(`RSI 21: ${rsi21Indicator} ATR: ${atrIndicator}`);
@@ -109,8 +109,8 @@ const tradeLogic = () => {
     }
 };
 
-// Params: candleSize, numCandles, atrPeriod, interval in seconds
-startRangeDataLoop(5, 110, 50, 2);
+// Params: candleSize, numCandles, interval in seconds
+startRangeDataLoop(5, 110, 2);
 
 setInterval( tradeLogic, 2 * 1000);
 
