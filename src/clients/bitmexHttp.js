@@ -3,7 +3,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 const bitmexAxios = axios.create();
-const isLive = false;
+const isLive = true;
 // Pre-compute the postBody so we can be sure that we're using *exactly* the same body in the request
 // and in the signature. If you don't do this, you might get differently-sorted keys and blow the signature.
 
@@ -32,7 +32,7 @@ const authenticatedRequest = (method, path, payload, cb) => {
 const request = (method, path, payload, cb) => {
     bitmexAxios[method](`https://${isLive ? 'www' : 'testnet'}.bitmex.com${path}`, payload).then((response) => {
         return cb(response);
-    }, (err) => console.log(`Saltbae Error: Method: ${method.toUpperCase()} path: ${path}`, err))
+    }, (err) => console.log(`Saltbae Error: Method: ${method.toUpperCase()} path: ${path}`, err.response))
 };
 
 export const closePositionLimit = (closePrice) => {
@@ -41,8 +41,8 @@ export const closePositionLimit = (closePrice) => {
     });
 };
 
-export const closePosition = () => {
-    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close'}, (response) => {
+export const closePosition = (closePrice, bidSize) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close' , execInst: 'ParticipateDoNotInitiate',}, (response) => {
         console.log('Position closed at:', response.data.price);
     });
 }
@@ -53,8 +53,8 @@ export const setLeverage = (amount) => {
    });
 };
 
-export const openOrder = (bidSize, direction, cb) => {
-    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: bidSize, ordType: 'Market', side: direction}, (response) => {
+export const openOrder = (bidSize, price, direction, cb) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: bidSize,  price: price,  execInst: 'ParticipateDoNotInitiate', ordType: 'Limit', side: direction}, (response) => {
         cb(response);
     });
 }
@@ -70,6 +70,12 @@ export const getOrderBook = (orderDepth, cb) => {
     delete bitmexAxios.defaults.headers['api-signature'];
     delete bitmexAxios.defaults.headers['api-nonce'];
     request('get', `/api/v1/orderBook/L2?symbol=XBT&depth=${orderDepth}`, null, cb);
+};
+
+export const getBalance = (cb) => {
+     authenticatedRequest('get', '/user/margin', null, (response) => {
+        cb(response);
+    });
 };
 
 export const getOrderBookValues = (orderBook, orderDepth) => {
