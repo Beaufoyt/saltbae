@@ -26,8 +26,9 @@ const candleSize = 5;
 const atrPeriod = 50;
 const buyPeriod = 21;
 const buyBuyPeriod = 50;
-const bidSize = 1000;
-const orderDepth = 35;
+const bidSize = 3200;
+const orderDepth = 25;
+const profitTarget = 12;
 let median = 0;
 
 let direction = "";
@@ -57,14 +58,13 @@ bitmexHttpRequest('post', '/position/leverage', { symbol: 'XBTUSD', leverage: 10
 // });
 
 const setClosePosition = () => {
-    var closePrice = direction == 'Buy' ? buyPrice + 20 : buyPrice - 20;
+    var closePrice = direction == 'Buy' ? buyPrice + profitTarget : buyPrice - profitTarget;
     bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', price:  closePrice}, (response) => {
         console.log('Position close set at :', response.data.price);
     });
 }
 
 const closePosition = () => {
-    var closePrice = direction == 'Buy' ? buyPrice + 20 : buyPrice - 20;
     bitmexHttpRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close'}, (response) => {
         console.log('Position closed  at :', response.data.price);
     });
@@ -116,9 +116,9 @@ const tradeLogic = () => {
                     openOrder('Buy');          
                 }
                 if (buyRatio < 20 && trend == "DOWN"){
-                    openOrder('Sell');
+                   // openOrder('Sell');
                 }
-                console.log('Current Price:', median,  ' Buy percentage:', buyRatio );
+                console.log('Current Price:', median,  ' Buy percentage:', buyRatio, ' Total Buy : ', buyTotal, ' Total Sell : ', sellTotal );
                 console.log('==========================================================')
             } else {
                 tradeOpen = true;
@@ -131,7 +131,7 @@ const tradeLogic = () => {
                 var dollarMovement =  direction == 'Buy' ? median - buyPrice :  buyPrice - median;
                 console.log(direction , ' trade open at : ', buyPrice, ' Current Price:', median, 'Making:', dollarMovement );
                 console.log('==========================================================')
-                if (dollarMovement < -20 || dollarMovement  > 20) {
+                if (dollarMovement < -profitTarget || dollarMovement  > profitTarget) {
                     closePosition();
                 }   
             }   
