@@ -53,7 +53,13 @@ export const setLeverage = (amount) => {
    });
 };
 
-export const openOrder = (bidSize, direction, cb) => {
+export const openLimitOrder = (bidSize, direction, price, cb) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: bidSize, ordType: 'Market', side: direction}, (response) => {
+        cb(response);
+    });
+}
+
+export const openMarketOrder = (bidSize, direction, cb) => {
     authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: bidSize, ordType: 'Market', side: direction}, (response) => {
         cb(response);
     });

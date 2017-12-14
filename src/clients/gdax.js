@@ -29,6 +29,8 @@ const requestOrderBook = (cb) => {
         const askPrice = response.data.asks[0][0];
         const median = (parseInt(bidPrice) + parseInt(askPrice)) / 2
 
+        console.log(median);
+
         midPrice = median;
    });
 }
