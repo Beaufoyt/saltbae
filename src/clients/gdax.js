@@ -1,6 +1,6 @@
 import axios from 'axios';
 import moment from 'moment';
-import { getAtr, getRsi } from '../lib/ranges';
+import { getAtr, getRsi, getMACD as getMACDIndicator, getStoch as getStochIndicator } from '../lib/ranges';
 
 let closingPrices = [];
 let candles = [];
@@ -15,7 +15,30 @@ const _resetAtrData = () => {
     };
 }
 
+const _resetMACDData = () => {
+    return {
+        values: [],
+        fastPeriod: 5,
+        slowPeriod: 8,
+        signalPeriod: 3 ,
+        SimpleMAOscillator: true,
+        SimpleMASignal: true
+    };
+}
+
+const _resetStochData = () => {
+    return {
+        high: [],
+        low: [],
+        close: [],
+        period: 0,
+        signalPeriod: 0,
+    };
+}
+
 let atrData = _resetAtrData();
+let macdData = _resetMACDData();
+let stochData = _resetStochData();
 
 const request = (method, path, payload, cb) => {
     axios[method](`https://api.gdax.com/${path}`, payload).then((response) => {
@@ -43,6 +66,8 @@ const requestCandles = (candleSize, amount, cb) => {
         candles = response.data;
         closingPrices = [];
         atrData = _resetAtrData();
+        macdData = _resetMACDData();
+        stochData = _resetStochData();
 
         for(var candle in response.data) {
             const close = response.data[candle][4];
@@ -50,6 +75,10 @@ const requestCandles = (candleSize, amount, cb) => {
             atrData.low.push(response.data[candle][1]);
             atrData.high.push(response.data[candle][2]);
             atrData.close.push(close);
+            stochData.low.push(response.data[candle][1]);
+            stochData.high.push(response.data[candle][2]);
+            stochData.close.push(close);
+            macdData.values.push(close);
             closingPrices.push(close);
         }
     });
@@ -62,6 +91,22 @@ export const getMidPrice = () => {
 export const getAtrRange = (atrPeriod) => {
     atrData.period = atrPeriod;
     return (atrData.high && atrData.high.length) ? getAtr(atrData) : [];
+}
+
+export const getMACD = (fast, slow, signal) => {
+    macdData.fast = fast;
+    macdData.fast = slow;
+    macdData.fast = signal;
+    return (macdData.values && macdData.values.length) ? getMACDIndicator(macdData) : [];
+}
+
+export const getStoch = (period, signalPeriod) => {
+    stochData.period = period;
+    stochData.signalPeriod = signalPeriod;
+    stochData.high = stochData.high.slice(80, 110);
+    stochData.low = stochData.low.slice(80, 110);
+    stochData.close = stochData.close.slice(80, 110);
+    return (stochData.high && stochData.high.length) ? getStochIndicator(stochData) : [];
 }
 
 export const getCandles = () => {

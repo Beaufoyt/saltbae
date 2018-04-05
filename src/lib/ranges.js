@@ -1,4 +1,4 @@
-import { ATR } from 'technicalindicators';
+import { ATR, MACD, Stochastic } from 'technicalindicators';
 
 export const getRsi = (closingPrices, rsiPeriod) => {
     const rsi = [];
@@ -47,4 +47,12 @@ export const getRsi = (closingPrices, rsiPeriod) => {
 
 export const getAtr = (candleData) => {
     return ATR.calculate(candleData);
+}
+
+export const getMACD = (candleData) => {
+    return MACD.calculate(candleData);
+}
+
+export const getStoch = (candleData) => {
+    return Stochastic.calculate(candleData);
 }

@@ -35,15 +35,28 @@ const request = (method, path, payload, cb) => {
     }, (err) => console.log(`Saltbae Error: Method: ${method.toUpperCase()} path: ${path}`, err))
 };
 
-export const closePositionLimit = (closePrice) => {
-    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close', price:  closePrice}, (response) => {
+export const closePositionLimit = (amount, closePrice) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: amount, execInst: 'Close', price: closePrice}, (response) => {
         console.log('Position close set at:', response.data.price);
     });
 };
 
-export const closePosition = () => {
+export const closePosition = (callback) => {
     authenticatedRequest('post', '/order', { symbol: 'XBTUSD', execInst: 'Close'}, (response) => {
         console.log('Position closed at:', response.data.price);
+        callback();
+    });
+}
+
+export const stopMarket = (amount, price) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: amount, ordType: 'Stop', stopPx: price }, () => {
+        console.log('Stop set for', amount, 'contracts at', price);
+    });
+}
+
+export const takeProfitMarket = (amount, price) => {
+    authenticatedRequest('post', '/order', { symbol: 'XBTUSD', orderQty: amount, ordType: 'MarketIfTouched', stopPx: price }, () => {
+        console.log('Take profit set for', amount, 'contracts at', price);
     });
 }
 
@@ -62,6 +75,12 @@ export const openOrder = (bidSize, direction, cb) => {
 export const getPosition = (cb) => {
     authenticatedRequest('get', '/position', null, (response) => {
         cb(response);
+    });
+}
+
+export const getAccountBalance = (callback) => {
+    authenticatedRequest('get', '/user/wallet?currency=XBt', null,  (response) => {
+        callback(response.data.amount);
     });
 }
 
