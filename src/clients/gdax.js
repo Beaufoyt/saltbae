@@ -94,18 +94,20 @@ export const getAtrRange = (atrPeriod) => {
 }
 
 export const getMACD = (fast, slow, signal) => {
-    macdData.fast = fast;
-    macdData.fast = slow;
-    macdData.fast = signal;
+    macdData.fastPeriod = fast;
+    macdData.slowPeriod = slow;
+    macdData.signalPeriod = signal;
+    macdData.values = macdData.values.slice(0, 50);
+
     return (macdData.values && macdData.values.length) ? getMACDIndicator(macdData) : [];
 }
 
 export const getStoch = (period, signalPeriod) => {
     stochData.period = period;
     stochData.signalPeriod = signalPeriod;
-    stochData.high = stochData.high.slice(80, 110);
-    stochData.low = stochData.low.slice(80, 110);
-    stochData.close = stochData.close.slice(80, 110);
+    stochData.high = stochData.high.slice(0, 20);
+    stochData.low = stochData.low.slice(0, 20);
+    stochData.close = stochData.close.slice(0, 20);
     return (stochData.high && stochData.high.length) ? getStochIndicator(stochData) : [];
 }
 
