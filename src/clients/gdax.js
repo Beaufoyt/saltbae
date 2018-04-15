@@ -62,7 +62,7 @@ const requestCandles = (candleSize, amount, cb) => {
     const endTime = moment().toISOString();
 
     request('get', `/products/BTC-USD/candles?start=${startTime}end=${endTime}&granularity=${candleSize * 60}`, null, cb ? cb : (response) => {
-        response.data = response.data.length > 110 ? response.data.slice(0, 110) : response.data;
+        response.data = response.data.length > 51 ? response.data.slice(0, 51) : response.data;
         candles = response.data;
         closingPrices = [];
         atrData = _resetAtrData();
@@ -75,9 +75,11 @@ const requestCandles = (candleSize, amount, cb) => {
             atrData.low.push(response.data[candle][1]);
             atrData.high.push(response.data[candle][2]);
             atrData.close.push(close);
+
             stochData.low.push(response.data[candle][1]);
             stochData.high.push(response.data[candle][2]);
             stochData.close.push(close);
+
             macdData.values.push(close);
             closingPrices.push(close);
         }
@@ -102,13 +104,36 @@ export const getMACD = (fast, slow, signal) => {
     return (macdData.values && macdData.values.length) ? getMACDIndicator(macdData) : [];
 }
 
-export const getStoch = (period, signalPeriod) => {
-    stochData.period = period;
-    stochData.signalPeriod = signalPeriod;
-    stochData.high = stochData.high.slice(0, 20);
-    stochData.low = stochData.low.slice(0, 20);
-    stochData.close = stochData.close.slice(0, 20);
-    return (stochData.high && stochData.high.length) ? getStochIndicator(stochData) : [];
+export const getStoch = (period, signalPeriod, index) => {
+    period = 14;
+    signalPeriod = 3;
+    var low = getLow(period, stochData.low.slice(index, period));
+    var high = getHigh(period, stochData.high.slice(index, period));
+
+    var stochasticResultK = ( (stochData.close[index] - low) / ( high - low ) ) * 100;
+    //console.log(" CURRENT PRICE " + stochData.close[index] + " HIGH :" + high + " LOW: " + low + "STOCHASTIC : " + stochasticResultK);
+
+    return stochasticResultK;
+}
+
+function getLow(period, lows) {
+    var low = lows[0];
+    for (var i = 0; i < period; i++){
+        if (  lows[i] <  low) {
+            low = lows[i];
+        }
+    }
+    return low;
+}
+
+function getHigh(period, highs) {
+    var high = highs[0];
+    for (var i = 0; i < period; i++){
+        if (  highs[i]  >   high) {
+            high = highs[i];
+        }
+    }
+    return high;
 }
 
 export const getCandles = () => {
