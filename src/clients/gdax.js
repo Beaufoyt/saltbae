@@ -5,6 +5,7 @@ import { getAtr, getRsi, getMACD as getMACDIndicator, getStoch as getStochIndica
 let closingPrices = [];
 let candles = [];
 let midPrice = null;
+let currentPrice = 0;
 
 const _resetAtrData = () => {
     return {
@@ -56,12 +57,12 @@ const requestOrderBook = (cb) => {
    });
 }
 
-const requestCandles = (candleSize, amount, cb) => {
+export const requestCandles = (candleSize, amount, cb) => {
     amount = amount < 1 ? 1 : amount;
     const startTime = moment().subtract(110 * candleSize, 'minutes').toISOString();
     const endTime = moment().toISOString();
 
-    request('get', `/products/BTC-USD/candles?start=${startTime}end=${endTime}&granularity=${candleSize * 60}`, null, cb ? cb : (response) => {
+    request('get', `/products/BTC-USD/candles?start=${startTime}end=${endTime}&granularity=${candleSize * 60}`, null, (response) => {
         response.data = response.data.length > 51 ? response.data.slice(0, 51) : response.data;
         candles = response.data;
         closingPrices = [];
@@ -82,12 +83,21 @@ const requestCandles = (candleSize, amount, cb) => {
 
             macdData.values.push(close);
             closingPrices.push(close);
+
+
+            currentPrice = response.data[0][4];
         }
+
+        cb();
     });
 }
 
 export const getMidPrice = () => {
     return midPrice;
+}
+
+export const getCurrentPrice = () => {
+    return currentPrice;
 }
 
 export const getAtrRange = (atrPeriod) => {
@@ -140,14 +150,18 @@ export const getCandles = () => {
     return candles;
 }
 
+export const getCurrentCandle = () => {
+    return candles[0];
+}
+
 export const getRsiRange = (period) => {
-    if (midPrice) {
-       closingPrices.unshift(midPrice);
+    if (currentPrice) {
+       closingPrices.unshift(currentPrice);
     } else {
-       closingPrices[0] = midPrice;
+       closingPrices[0] = currentPrice;
     }
 
-    return (midPrice && closingPrices && closingPrices.length > 1) ? getRsi(closingPrices, period) : [];
+    return (currentPrice && closingPrices && closingPrices.length > 1) ? getRsi(closingPrices, period) : [];
 }
 
 export const startDataLoop = (candleSize, numCandles, intervalSeconds) => {
